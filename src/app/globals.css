@@ -24,7 +24,9 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
-
+p.chatTextMessage{
+  text-align: left;
+}
 @keyframes slideInLeft {
   from {
     opacity: 0;

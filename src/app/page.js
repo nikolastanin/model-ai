@@ -3,18 +3,27 @@ import { useState, useRef, useEffect } from "react";
 import { SYSTEM_PROMPT } from "@/utils/prompt";
 
 export default function Home() {
+  const helloMessages = ["Welcome! 😊 To begin, could you please share your first name?", "Hi there! 👋 May I have your first name to begin our conversation?","Welcome! 😊 May I ask for your first name to begin?"]
+  const randomHelloMessageIndex = Math.floor(Math.random()*2) + 1
   const [messages, setMessages] = useState([
     {role: "system", content: SYSTEM_PROMPT},
-    {role: "assistant", content: "Hi there! 👋 May I have your first name?"}
+    {role: "assistant", content: helloMessages[randomHelloMessageIndex]}
   ]);
   const [input, setInput] = useState("");
   const [inputDisabled, setInputDisabled] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [optionsValues, setOptionsValues] = useState([]);
-  const [showPreload, setShowPreload] = useState(true);
+  const [optionsValues, setOptionsValues] = useState([])
+  const showPreloadFromEnv = process.env.NEXT_PUBLIC_LOADING_SCREEN === "true" ? true : false;
+  const [showPreload, setShowPreload] = useState(showPreloadFromEnv);
   const inputRef = useRef(null);
   const bottomRef = useRef(null);
-  const [queuePosition] = useState(() => Math.floor(Math.random() * 5) + 2); // 5 to 9
+  const [queuePosition, setQueuePosition] = useState(null);
+
+  useEffect(() => {
+    const random = Math.floor(Math.random() * 5) + 2;
+    setQueuePosition(random);
+  }, []);
+
   const [progress, setProgress] = useState(0);
   const [fakeChat, setFakeChat] = useState([]);
   const lastMessage = messages[messages.length - 1];
@@ -126,10 +135,10 @@ export default function Home() {
     setInput("");
     setLoading(true);
 
-    const res = await fetch("http://localhost:8888/remodelmatchdb/public/api/chat", {
+    const res = await fetch(process.env.NEXT_PUBLIC_REMODELMATCH_API_URL+"/api/chat", {
       method: "POST",
       headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({messages: updated})
+      body: JSON.stringify({messages: updated, key:process.env.NEXT_PUBLIC_REMODELMATCH_API_KEY})
     });
 
     const data = await res.json();
@@ -188,6 +197,7 @@ export default function Home() {
               <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginTop: "1.5rem" }}>
                 {fakeChat.map((m, i) => (
                     <p
+                        className={"chatTextMessage"}
                         key={i}
                         style={{
                           alignSelf: m.role === "user" ? "flex-end" : "flex-start",
@@ -211,7 +221,7 @@ export default function Home() {
 
         ) : (
             <>
-              <h1>🏠 Home Repair Helper</h1>
+              <h1>🏠 Home Repair Assistant</h1>
               <br/>
 
               <div style={{display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "1rem"}}>
@@ -219,6 +229,7 @@ export default function Home() {
                     .filter(m => m.role !== "system")
                     .map((m, i) => (
                         <p
+                            className={"chatTextMessage"}
                             key={i}
                             style={{
                               alignSelf: m.role === "user" ? "flex-end" : "flex-start",
@@ -266,9 +277,9 @@ export default function Home() {
                     value={input}
                     onChange={e => setInput(e.target.value)}
                     placeholder={loading ? "Waiting for Assistant..." : "Type your answer..."}
-                    className="border-2 border-black"
+                    className="border-2"
                     disabled={loading || inputDisabled}
-                    style={{width: "100%", padding: "0.5rem", fontSize: "1rem"}}
+                    style={{width: "100%", padding: "0.5rem", fontSize: "1rem", borderRadius:"0.5rem", borderColor:"#c8b5b5"}}
                 />
               </form>
             </>
@@ -324,7 +335,11 @@ export default function Home() {
 
 
 const convertMarkdownBoldToHtml = (text) => {
-  return text.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+    if(text){
+        return text.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+    }else{
+        return text;
+    }
 };
 
 
