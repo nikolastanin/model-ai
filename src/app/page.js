@@ -1,103 +1,330 @@
-import Image from "next/image";
+'use client';
+import { useState, useRef, useEffect } from "react";
+import { SYSTEM_PROMPT } from "@/utils/prompt";
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.js
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [messages, setMessages] = useState([
+    {role: "system", content: SYSTEM_PROMPT},
+    {role: "assistant", content: "Hi there! 👋 May I have your first name?"}
+  ]);
+  const [input, setInput] = useState("");
+  const [inputDisabled, setInputDisabled] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [optionsValues, setOptionsValues] = useState([]);
+  const [showPreload, setShowPreload] = useState(true);
+  const inputRef = useRef(null);
+  const bottomRef = useRef(null);
+  const [queuePosition] = useState(() => Math.floor(Math.random() * 5) + 2); // 5 to 9
+  const [progress, setProgress] = useState(0);
+  const [fakeChat, setFakeChat] = useState([]);
+  const lastMessage = messages[messages.length - 1];
+  const allMessagePairs = [
+    [
+      { role: "user", content: "How much does it cost to replace 3 windows?" },
+      { role: "assistant", content: "That depends on the size and type — I can help you!" }
+    ],
+    [
+      { role: "user", content: "Do you offer bay window installation?" },
+      { role: "assistant", content: "Yes we do! Would you like a free quote?" }
+    ],
+    [
+      { role: "user", content: "Can I book a consultation online?" },
+      { role: "assistant", content: "Of course! I’ll help you schedule one now." }
+    ],
+    [
+      { role: "user", content: "What’s your turnaround time for installation?" },
+      { role: "assistant", content: "Usually 5–7 days after approval." }
+    ],
+    [
+      { role: "user", content: "Do you install triple-glazed windows?" },
+      { role: "assistant", content: "Yes — they’re great for insulation!" }
+    ]
+  ];
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
+
+
+
+
+  // Focus input after each GPT response
+  useEffect(() => {
+    if (!loading && !showPreload && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [loading, showPreload]);
+
+//fake chat
+  useEffect(() => {
+    if (!showPreload) return;
+
+    // Shuffle the message pairs
+    const shuffledPairs = [...allMessagePairs].sort(() => Math.random() - 0.5);
+
+    // Flatten the pairs into a single array of messages
+    const randomizedMessages = shuffledPairs.flat();
+
+    let index = 0;
+
+    const interval = setInterval(() => {
+      if (index >= randomizedMessages.length) {
+        clearInterval(interval);
+        return;
+      }
+
+      const nextMessage = randomizedMessages[index];
+      setFakeChat(prev => [...prev, nextMessage]);
+      index++;
+    }, 1500); // one message per second
+
+    return () => clearInterval(interval);
+  }, [showPreload]);
+
+
+
+
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    if (bottomRef.current) {
+      bottomRef.current.scrollIntoView({behavior: "smooth"});
+    }
+  }, [messages]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowPreload(false);
+      setFakeChat([]); // clear fake messages
+    }, 9000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+
+
+  useEffect(() => {
+    if (!showPreload) return;
+
+    const interval = setInterval(() => {
+      setProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          return 100;
+        }
+        return prev + 1; // adjust speed here (e.g., +2 is faster)
+      });
+    }, 95); // ~5.5 seconds total (100 x 55ms)
+
+    return () => clearInterval(interval);
+  }, [showPreload]);
+
+
+  const sendMessage = async (e, injectedInput = null) => {
+    e.preventDefault();
+    const userInput = injectedInput ?? input;
+    if (!userInput.trim()) return;
+
+    const updated = [...messages, {role: "user", content: userInput}];
+    setMessages(updated);
+    setInput("");
+    setLoading(true);
+
+    const res = await fetch("http://localhost:8888/remodelmatchdb/public/api/chat", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({messages: updated})
+    });
+
+    const data = await res.json();
+    const reply = data.reply;
+
+    // Check for end flag
+    let isDone = false;
+    const match = reply.match(/```json\s*{[^}]*"done"\s*:\s*true[^}]*}\s*```/i);
+    if (match) isDone = true;
+
+    // Remove JSON from display
+    // const cleanedReply = reply.replace(/```json\s*{[^`]+}\s*```/i, "").trim();
+    const {cleanedReply, objectFromApi} = extractJsonAndCleanText(reply);
+    const showOptions = Array.isArray(objectFromApi) && objectFromApi[0]?.options === true;
+    const optionsValues = showOptions === true ? objectFromApi[0]?.options_values : false;
+
+    if (showOptions) {
+      setOptionsValues(objectFromApi[0]?.options_values || []);
+    } else {
+      setOptionsValues([]);
+    }
+
+    console.log(showOptions, optionsValues);
+    console.log(objectFromApi);
+    setMessages([...updated, {role: "assistant", content: cleanedReply}]);
+    setInputDisabled(isDone);
+    setLoading(false);
+  };
+
+  const handleQuickReply = async (value) => {
+    await sendMessage({
+      preventDefault: () => {
+      }
+    }, value);
+  };
+
+  return (
+      <main style={{maxWidth: 600, margin: "2rem auto", padding: "1rem", textAlign: "center"}}>
+        {showPreload ? (
+            <div style={{ paddingTop: "3rem" }}>
+              <h2 style={{ fontSize: 25 }}>
+                <strong>⏳ {queuePosition} people are in the line in front of you...</strong>
+              </h2>
+              <p style={{ fontSize: 20 }}>Waiting for Assistant to free up... </p>
+
+              <div style={{ height: "10px", width: "100%", background: "#eee", borderRadius: "4px", overflow: "hidden", margin: "1.5rem 0" }}>
+                <div style={{
+                  height: "100%",
+                  width: `${progress}%`,
+                  backgroundColor: "#007bff",
+                  transition: "width 0.05s linear"
+                }} />
+              </div>
+
+              {/* Fake chat stream */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginTop: "1.5rem" }}>
+                {fakeChat.map((m, i) => (
+                    <p
+                        key={i}
+                        style={{
+                          alignSelf: m.role === "user" ? "flex-end" : "flex-start",
+                          backgroundColor: m.role === "user" ? "#DCF8C6" : "#F1F0F0",
+                          color: "#000",
+                          padding: "0.5rem 0.75rem",
+                          borderRadius: "16px",
+                          maxWidth: "80%",
+                          whiteSpace: "pre-wrap",
+                          fontSize: "1rem",
+                          filter: "blur(0.5px)",
+                          opacity: 0.6,
+                          animation: m.role === "user" ? "slideInRight 0.3s ease-out" : "slideInLeft 0.3s ease-out"
+                        }}
+                    >
+                      <strong>{m.role === "user" ? "You" : "Assistant"}:</strong> {m.content}
+                    </p>
+                ))}
+              </div>
+            </div>
+
+        ) : (
+            <>
+              <h1>🏠 Home Repair Helper</h1>
+              <br/>
+
+              <div style={{display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "1rem"}}>
+                {messages
+                    .filter(m => m.role !== "system")
+                    .map((m, i) => (
+                        <p
+                            key={i}
+                            style={{
+                              alignSelf: m.role === "user" ? "flex-end" : "flex-start",
+                              backgroundColor: m.role === "user" ? "#DCF8C6" : "#F1F0F0",
+                              color: "#000",
+                              padding: "0.5rem 0.75rem",
+                              borderRadius: "16px",
+                              maxWidth: "80%",
+                              whiteSpace: "pre-wrap",
+                              fontSize: "1rem",
+                            }}
+                        >
+                          <strong>{m.role === "user" ? "You" : "Assistant"}:</strong>{" "}
+                          <span dangerouslySetInnerHTML={{__html: convertMarkdownBoldToHtml(m.content)}}/>
+                        </p>
+                    ))}
+                <div ref={bottomRef}/>
+              </div>
+
+              {optionsValues.length > 0 && (
+                  <div style={{display: "flex", gap: "0.5rem", marginBottom: "1rem", flexWrap: "wrap"}}>
+                    {optionsValues.map((option, idx) => (
+                        <button
+                            key={idx}
+                            onClick={() => handleQuickReply(option)}
+                            style={{
+                              padding: "0.5rem 1rem",
+                              backgroundColor: "#007bff",
+                              color: "#fff",
+                              border: "none",
+                              borderRadius: "8px",
+                              cursor: "pointer",
+                              fontSize: "1rem"
+                            }}
+                        >
+                          {option}
+                        </button>
+                    ))}
+                  </div>
+              )}
+
+              <form onSubmit={sendMessage}>
+                <input
+                    ref={inputRef}
+                    value={input}
+                    onChange={e => setInput(e.target.value)}
+                    placeholder={loading ? "Waiting for Assistant..." : "Type your answer..."}
+                    className="border-2 border-black"
+                    disabled={loading || inputDisabled}
+                    style={{width: "100%", padding: "0.5rem", fontSize: "1rem"}}
+                />
+              </form>
+            </>
+        )}
       </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
   );
 }
+  const extractJsonAndCleanText = (reply) => {
+  const jsonBlockRegex = /```json\s*([\s\S]*?)\s*```/i;
+  const looseJsonRegex = /(\{[\s\S]*\}|\[[\s\S]*\])/;
+
+  let objectFromApi = null;
+  let cleanedReply = reply;
+
+  const blockMatch = reply.match(jsonBlockRegex);
+  if (blockMatch) {
+    const blockContent = blockMatch[1]?.trim();
+
+    // ✅ Try to parse only if content exists
+    if (blockContent) {
+      try {
+        objectFromApi = JSON.parse(blockContent);
+      } catch (err) {
+        console.error("Failed to parse JSON from code block:", err.message);
+      }
+    } else {
+      console.warn("JSON block found, but it was empty.");
+    }
+
+    // ✅ Always remove the full block (even if invalid or empty)
+    cleanedReply = cleanedReply.replace(blockMatch[0], '').trim();
+  } else {
+    // Fallback: remove any lone ```json``` or ``` ```
+    cleanedReply = cleanedReply.replace(/```json|```/gi, '').trim();
+
+    // Try to extract loose JSON from body
+    const looseMatch = reply.match(looseJsonRegex);
+    if (looseMatch && looseMatch[0]) {
+      try {
+        objectFromApi = JSON.parse(looseMatch[0]);
+      } catch (err) {
+        console.error("Failed to parse loose JSON:", err.message);
+      }
+
+      cleanedReply = cleanedReply.replace(looseMatch[0], '').trim();
+    }
+  }
+
+  return { cleanedReply, objectFromApi };
+};
+
+
+
+
+const convertMarkdownBoldToHtml = (text) => {
+  return text.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+};
+
+
