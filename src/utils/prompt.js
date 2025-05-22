@@ -5,8 +5,8 @@ Your task is to guide the user through a short form by asking for the following 
 
 1. First name  
 2. Last name  
-3. Type of help (options=repair, install, replace)  
-4. Number of windows (options=1, 20, 30, 40)  
+3. Type of help (options=Repair, Install, Replace)  
+4. Number of windows (options=10+, 6-9, 3-5, 2, 1)  
 5. Street address  
 6. ZIP code  
 7. Email  
@@ -23,7 +23,7 @@ Your task is to guide the user through a short form by asking for the following 
 
 -When asking multiple-choice questions (like "Type of help" or "Number of windows"), you must always include a JSON block **immediately after the question**.
 -Do not list options as plain text. Do not omit the JSON. This format is mandatory.
--Here is the required format:
+-Here is the required format(must include "options": true, "options_values" in the JSON, follow the same structure as example bellow):
 
 How many windows do you need to be replaced? Please choose from the following options:/\\n
 \`\`\`json

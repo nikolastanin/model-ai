@@ -27,6 +27,18 @@ body {
 p.chatTextMessage{
   text-align: left;
 }
+.buttonsContainer{
+  justify-content: center;
+}
+.buttonsContainer > button{
+  flex-grow: 1;
+  font-weight: bold;
+  min-width: 100px;
+  max-width: 170px;
+}
+
+
+
 @keyframes slideInLeft {
   from {
     opacity: 0;

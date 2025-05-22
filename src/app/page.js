@@ -2,6 +2,8 @@
 import { useState, useRef, useEffect } from "react";
 import { SYSTEM_PROMPT } from "@/utils/prompt";
 
+
+
 export default function Home() {
   const helloMessages = ["Welcome! 😊 To begin, could you please share your first name?", "Hi there! 👋 May I have your first name to begin our conversation?","Welcome! 😊 May I ask for your first name to begin?"]
   const randomHelloMessageIndex = Math.floor(Math.random()*2) + 1
@@ -151,15 +153,21 @@ export default function Home() {
 
     // Remove JSON from display
     // const cleanedReply = reply.replace(/```json\s*{[^`]+}\s*```/i, "").trim();
-    const {cleanedReply, objectFromApi} = extractJsonAndCleanText(reply);
-    const showOptions = Array.isArray(objectFromApi) && objectFromApi[0]?.options === true;
-    const optionsValues = showOptions === true ? objectFromApi[0]?.options_values : false;
+    const { cleanedReply, objectFromApi } = extractJsonAndCleanText(reply);
 
-    if (showOptions) {
-      setOptionsValues(objectFromApi[0]?.options_values || []);
-    } else {
-      setOptionsValues([]);
+// Determine if we should show options
+    let options = [];
+
+    if (Array.isArray(objectFromApi)) {
+      options = objectFromApi.find(item => item.options)?.options_values || [];
+    } else if (objectFromApi?.options === true) {
+      options = objectFromApi.options_values || [];
     }
+
+    const showOptions = options.length > 0;
+
+    setOptionsValues(showOptions ? options : []);
+
 
     console.log(showOptions, optionsValues);
     console.log(objectFromApi);
@@ -250,7 +258,7 @@ export default function Home() {
               </div>
 
               {optionsValues.length > 0 && (
-                  <div style={{display: "flex", gap: "0.5rem", marginBottom: "1rem", flexWrap: "wrap"}}>
+                  <div className={'buttonsContainer'} style={{display: "flex", gap: "0.5rem", marginBottom: "1rem", flexWrap: "wrap"}}>
                     {optionsValues.map((option, idx) => (
                         <button
                             key={idx}
